@@ -116,6 +116,18 @@ public class PaintApp extends JFrame {
         });
         controls.add(redoButton);
 
+        JButton clearButton = new JButton("Clear");
+        clearButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                graphics.setColor(Color.WHITE);
+                graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                canvas.repaint();
+                saveImage();
+            }
+        });
+        controls.add(clearButton);
+
         add(canvas, BorderLayout.CENTER);
         add(controls, BorderLayout.SOUTH);
         setVisible(true);
