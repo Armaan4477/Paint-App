@@ -15,6 +15,9 @@ public class PaintApp extends JFrame {
     private Graphics2D graphics;
     private Stack<BufferedImage> undoStack = new Stack<>();
     private Stack<BufferedImage> redoStack = new Stack<>();
+    private Rectangle selectionRect;
+    private boolean isSelecting = false;
+    private JToggleButton selectToggleButton;
 
     public PaintApp() {
         super("Paint App");
@@ -28,6 +31,12 @@ public class PaintApp extends JFrame {
                 if (image != null) {
                     g.drawImage(image, 0, 0, null);
                 }
+                if (selectionRect != null) {
+                    Graphics2D g2d = (Graphics2D) g;
+                    g2d.setColor(Color.BLACK);
+                    g2d.setStroke(new BasicStroke(1));
+                    g2d.draw(selectionRect);
+                }
             }
         };
         canvas.setBackground(Color.WHITE);
@@ -36,17 +45,42 @@ public class PaintApp extends JFrame {
             public void mousePressed(MouseEvent e) {
                 lastX = e.getX();
                 lastY = e.getY();
+                if (selectToggleButton.isSelected()) {
+                    isSelecting = true;
+                    selectionRect = new Rectangle(lastX, lastY, 0, 0);
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (isSelecting) {
+                    isSelecting = false;
+                    selectionRect = new Rectangle(
+                            Math.min(lastX, e.getX()),
+                            Math.min(lastY, e.getY()),
+                            Math.abs(e.getX() - lastX),
+                            Math.abs(e.getY() - lastY)
+                    );
+                    canvas.repaint();
+                }
             }
         });
         canvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                graphics.setColor(brushColor);
-                graphics.setStroke(new BasicStroke(brushThickness));
-                graphics.drawLine(lastX, lastY, e.getX(), e.getY());
-                lastX = e.getX();
-                lastY = e.getY();
-                canvas.repaint();
+                if (isSelecting) {
+                    int width = e.getX() - lastX;
+                    int height = e.getY() - lastY;
+                    selectionRect.setSize(width, height);
+                    canvas.repaint();
+                } else {
+                    graphics.setColor(brushColor);
+                    graphics.setStroke(new BasicStroke(brushThickness));
+                    graphics.drawLine(lastX, lastY, e.getX(), e.getY());
+                    lastX = e.getX();
+                    lastY = e.getY();
+                    canvas.repaint();
+                }
             }
         });
 
@@ -87,6 +121,19 @@ public class PaintApp extends JFrame {
             }
         });
         controls.add(textButton);
+
+        selectToggleButton = new JToggleButton("Select");
+        selectToggleButton.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (selectToggleButton.isSelected()) {
+                    canvas.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+                } else {
+                    canvas.setCursor(Cursor.getDefaultCursor());
+                }
+            }
+        });
+        controls.add(selectToggleButton);
 
         JButton undoButton = new JButton("Undo");
         undoButton.addActionListener(new ActionListener() {
