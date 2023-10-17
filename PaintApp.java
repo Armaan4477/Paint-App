@@ -62,9 +62,13 @@ public class PaintApp extends JFrame {
                             Math.abs(e.getY() - lastY)
                     );
                     canvas.repaint();
+                } else {
+                    selectionRect = null; // clear selection rectangle
+                    canvas.repaint(); // repaint canvas to clear selection rectangle
                 }
             }
         });
+        
         canvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
