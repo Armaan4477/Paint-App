@@ -156,6 +156,33 @@ public class PaintApp extends JFrame {
         });
         brushMenu.add(squareBrushItem);
 
+        JMenuItem circleBrushItem = new JMenuItem("Circle Brush");
+        circleBrushItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changeBrush("Circle");
+            }
+        });
+        brushMenu.add(circleBrushItem);
+
+        JMenuItem sprayBrushItem = new JMenuItem("Spray Brush");
+        sprayBrushItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changeBrush("Spray");
+            }
+        });
+        brushMenu.add(sprayBrushItem);
+
+        JMenuItem starBrushItem = new JMenuItem("Star Brush");
+        starBrushItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changeBrush("Star");
+            }
+        });
+        brushMenu.add(starBrushItem);
+
         JButton brushButton = new JButton("Select Brush");
         brushButton.addActionListener(new ActionListener() {
             @Override
@@ -240,6 +267,14 @@ public class PaintApp extends JFrame {
             drawBasicBrush(x, y);
         } else if (currentBrush.equals("Square")) {
             drawSquareBrush(x, y);
+        } else if (currentBrush.equals("Circle")) {
+            drawCircleBrush(x, y);
+        } else if (currentBrush.equals("Spray")) {
+            drawSprayBrush(x, y);
+        } else if (currentBrush.equals("Star")) {
+            drawStarBrush(x, y);
+        } else if (currentBrush.equals("Custom")) {
+            drawCustomBrush(x, y);
         }
     }
 
@@ -254,6 +289,35 @@ public class PaintApp extends JFrame {
         graphics.setStroke(new BasicStroke(brushThickness));
         int size = brushThickness * 2;
         graphics.fillRect(x - size / 2, y - size / 2, size, size);
+    }
+
+    private void drawCircleBrush(int x, int y) {
+        graphics.setColor(brushColor);
+        graphics.setStroke(new BasicStroke(brushThickness));
+        int size = brushThickness * 2;
+        graphics.fillOval(x - size / 2, y - size / 2, size, size);
+    }
+
+    private void drawSprayBrush(int x, int y) {
+        graphics.setColor(brushColor);
+        int numSpray = 10;
+        for (int i = 0; i < numSpray; i++) {
+            int offsetX = (int) (Math.random() * brushThickness * 8) - brushThickness * 5;
+            int offsetY = (int) (Math.random() * brushThickness * 8) - brushThickness * 5;
+            graphics.fillRect(x + offsetX, y + offsetY, 1, 1);
+        }
+    }
+
+    private void drawStarBrush(int x, int y) {
+        graphics.setColor(brushColor);
+        int size = brushThickness * 2;
+        int[] xPoints = {x, x + size, x + size / 2, x, x - size / 2};
+        int[] yPoints = {y - size, y - size / 2, y, y + size / 2, y};
+        graphics.fillPolygon(xPoints, yPoints, 5);
+    }
+
+    private void drawCustomBrush(int x, int y) {
+        // Add your custom brush logic here
     }
 
     private void changeBrush(String newBrush) {
