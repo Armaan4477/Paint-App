@@ -18,11 +18,12 @@ public class PaintApp extends JFrame {
     private Rectangle selectionRect;
     private boolean isSelecting = false;
     private JToggleButton selectToggleButton;
+    private String currentBrush = "Basic"; // Default brush type
 
     public PaintApp() {
         super("Paint App");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 600);
+        setSize(1000, 600);
 
         canvas = new JPanel() {
             @Override
@@ -40,53 +41,9 @@ public class PaintApp extends JFrame {
             }
         };
         canvas.setBackground(Color.WHITE);
-        canvas.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                lastX = e.getX();
-                lastY = e.getY();
-                if (selectToggleButton.isSelected()) {
-                    isSelecting = true;
-                    selectionRect = new Rectangle(lastX, lastY, 0, 0);
-                }
-            }
+        canvas.addMouseListener(new CustomMouseAdapter());
 
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (isSelecting) {
-                    isSelecting = false;
-                    selectionRect = new Rectangle(
-                            Math.min(lastX, e.getX()),
-                            Math.min(lastY, e.getY()),
-                            Math.abs(e.getX() - lastX),
-                            Math.abs(e.getY() - lastY)
-                    );
-                    canvas.repaint();
-                } else {
-                    selectionRect = null; // clear selection rectangle
-                    canvas.repaint(); // repaint canvas to clear selection rectangle
-                }
-            }
-        });
-        
-        canvas.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                if (isSelecting) {
-                    int width = e.getX() - lastX;
-                    int height = e.getY() - lastY;
-                    selectionRect.setSize(width, height);
-                    canvas.repaint();
-                } else {
-                    graphics.setColor(brushColor);
-                    graphics.setStroke(new BasicStroke(brushThickness));
-                    graphics.drawLine(lastX, lastY, e.getX(), e.getY());
-                    lastX = e.getX();
-                    lastY = e.getY();
-                    canvas.repaint();
-                }
-            }
-        });
+        canvas.addMouseMotionListener(new CustomMouseAdapter());
 
         JPanel controls = new JPanel();
         JButton colorButton = new JButton("Choose Color");
@@ -179,6 +136,24 @@ public class PaintApp extends JFrame {
         });
         controls.add(clearButton);
 
+        JButton basicBrushButton = new JButton("Basic Brush");
+        basicBrushButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changeBrush("Basic");
+            }
+        });
+        controls.add(basicBrushButton);
+
+        JButton squareBrushButton = new JButton("Square Brush");
+        squareBrushButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                changeBrush("Square");
+            }
+        });
+        controls.add(squareBrushButton);
+
         add(canvas, BorderLayout.CENTER);
         add(controls, BorderLayout.SOUTH);
         setVisible(true);
@@ -190,6 +165,13 @@ public class PaintApp extends JFrame {
         saveImage();
     }
 
+    private class ThicknessChangeListener implements ChangeListener {
+        @Override
+        public void stateChanged(ChangeEvent e) {
+            brushThickness = ((JSlider) e.getSource()).getValue();
+        }
+    }
+
     private void saveImage() {
         BufferedImage copy = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
         Graphics2D copyGraphics = copy.createGraphics();
@@ -198,11 +180,73 @@ public class PaintApp extends JFrame {
         redoStack.clear();
     }
 
-    private class ThicknessChangeListener implements ChangeListener {
+    private class CustomMouseAdapter extends MouseAdapter {
         @Override
-        public void stateChanged(ChangeEvent e) {
-            brushThickness = ((JSlider) e.getSource()).getValue();
+        public void mousePressed(MouseEvent e) {
+            lastX = e.getX();
+            lastY = e.getY();
+            if (selectToggleButton.isSelected()) {
+                isSelecting = true;
+                selectionRect = new Rectangle(lastX, lastY, 0, 0);
+            }
         }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (isSelecting) {
+                isSelecting = false;
+                selectionRect = new Rectangle(
+                        Math.min(lastX, e.getX()),
+                        Math.min(lastY, e.getY()),
+                        Math.abs(e.getX() - lastX),
+                        Math.abs(e.getY() - lastY)
+                );
+                canvas.repaint();
+            } else {
+                selectionRect = null; // clear selection rectangle
+                canvas.repaint(); // repaint canvas to clear selection rectangle
+            }
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            if (isSelecting) {
+                int width = e.getX() - lastX;
+                int height = e.getY() - lastY;
+                selectionRect.setSize(width, height);
+                canvas.repaint();
+            } else {
+                drawWithBrush(e.getX(), e.getY());
+                lastX = e.getX();
+                lastY = e.getY();
+                canvas.repaint();
+            }
+        }
+    }
+
+    private void drawWithBrush(int x, int y) {
+        if (currentBrush.equals("Basic")) {
+            drawBasicBrush(x, y);
+        } else if (currentBrush.equals("Square")) {
+            drawSquareBrush(x, y);
+        }
+    }
+
+    private void drawBasicBrush(int x, int y) {
+        graphics.setColor(brushColor);
+        graphics.setStroke(new BasicStroke(brushThickness));
+        graphics.drawLine(lastX, lastY, x, y);
+    }
+
+    private void drawSquareBrush(int x, int y) {
+        graphics.setColor(brushColor);
+        graphics.setStroke(new BasicStroke(brushThickness));
+        int size = brushThickness * 2;
+        graphics.fillRect(x - size / 2, y - size / 2, size, size);
+    }
+
+    private void changeBrush(String newBrush) {
+        currentBrush = newBrush;
     }
 
     public static void main(String[] args) {
