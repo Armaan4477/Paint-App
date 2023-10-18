@@ -136,23 +136,34 @@ public class PaintApp extends JFrame {
         });
         controls.add(clearButton);
 
-        JButton basicBrushButton = new JButton("Basic Brush");
-        basicBrushButton.addActionListener(new ActionListener() {
+        // Create a popup menu for brush selection
+        JPopupMenu brushMenu = new JPopupMenu();
+        JMenuItem basicBrushItem = new JMenuItem("Basic Brush");
+        basicBrushItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 changeBrush("Basic");
             }
         });
-        controls.add(basicBrushButton);
+        brushMenu.add(basicBrushItem);
 
-        JButton squareBrushButton = new JButton("Square Brush");
-        squareBrushButton.addActionListener(new ActionListener() {
+        JMenuItem squareBrushItem = new JMenuItem("Square Brush");
+        squareBrushItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 changeBrush("Square");
             }
         });
-        controls.add(squareBrushButton);
+        brushMenu.add(squareBrushItem);
+
+        JButton brushButton = new JButton("Select Brush");
+        brushButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                brushMenu.show(brushButton, 0, brushButton.getHeight());
+            }
+        });
+        controls.add(brushButton);
 
         add(canvas, BorderLayout.CENTER);
         add(controls, BorderLayout.SOUTH);
