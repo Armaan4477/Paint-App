@@ -300,7 +300,7 @@ public class PaintApp extends JFrame {
 
     private void drawSprayBrush(int x, int y) {
         graphics.setColor(brushColor);
-        int numSpray = 10;
+        int numSpray = 20;
         for (int i = 0; i < numSpray; i++) {
             int offsetX = (int) (Math.random() * brushThickness * 8) - brushThickness * 5;
             int offsetY = (int) (Math.random() * brushThickness * 8) - brushThickness * 5;
