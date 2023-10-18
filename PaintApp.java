@@ -273,8 +273,6 @@ public class PaintApp extends JFrame {
             drawSprayBrush(x, y);
         } else if (currentBrush.equals("Star")) {
             drawStarBrush(x, y);
-        } else if (currentBrush.equals("Custom")) {
-            drawCustomBrush(x, y);
         }
     }
 
@@ -316,9 +314,6 @@ public class PaintApp extends JFrame {
         graphics.fillPolygon(xPoints, yPoints, 5);
     }
 
-    private void drawCustomBrush(int x, int y) {
-        // Add your custom brush logic here
-    }
 
     private void changeBrush(String newBrush) {
         currentBrush = newBrush;
