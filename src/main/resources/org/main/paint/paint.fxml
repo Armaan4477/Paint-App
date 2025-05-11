@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.shape.Rectangle?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.main.paint.Controller">
+    <top>
+        <VBox spacing="10">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <Label text="Paint Application" style="-fx-font-size: 20px; -fx-font-weight: bold;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Brush Type:"/>
+                <ComboBox fx:id="brushTypeComboBox" prefWidth="150"/>
+                <Label text="Brush Size:"/>
+                <Slider fx:id="brushSizeSlider" min="1" max="50" value="5" showTickMarks="true" showTickLabels="true" prefWidth="200"/>
+                <Label text="Color:"/>
+                <HBox fx:id="colorPalette" spacing="5" alignment="CENTER_LEFT">
+                    <!-- Color rectangles will be added programmatically -->
+                </HBox>
+                <Button fx:id="clearButton" text="Clear Canvas" onAction="#handleClearCanvas"/>
+            </HBox>
+        </VBox>
+    </top>
+    <center>
+        <StackPane style="-fx-background-color: #f0f0f0;">
+            <Canvas fx:id="canvas" width="780" height="500"/>
+        </StackPane>
+    </center>
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <Label fx:id="coordinatesLabel" text="Coordinates: 0, 0"/>
+        </HBox>
+    </bottom>
+</BorderPane>
