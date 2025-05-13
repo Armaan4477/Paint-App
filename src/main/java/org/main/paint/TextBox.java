@@ -117,7 +117,21 @@ public class TextBox {
         double width = getWidth();
         double height = fontSize;
         
+        // Get the top-left corner of the text for hit testing
+        double textTopY = y - fontSize * 0.85; // More precise top Y calculation
+        
         return testX >= x && testX <= (x + width) &&
-               testY >= y - height && testY <= y;
+               testY >= textTopY && testY <= (textTopY + height);
+    }
+    
+    // Get the baseline Y coordinate for text drawing (where text actually gets drawn)
+    public double getBaselineY() {
+        return y;
+    }
+    
+    // Get the top Y coordinate for the text box (for selection rectangle)
+    public double getTopY() {
+        // More precise calculation of where text visually appears
+        return y - fontSize * 0.85; 
     }
 }

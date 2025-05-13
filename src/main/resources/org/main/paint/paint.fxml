@@ -40,7 +40,7 @@
     </top>
     <center>
         <StackPane fx:id="canvasContainer" style="-fx-background-color: #f0f0f0;">
-            <Canvas fx:id="canvas" width="1180" height="600"/>
+            <Canvas fx:id="canvas" width="1180" height="600" StackPane.alignment="CENTER"/>
         </StackPane>
     </center>
     <bottom>

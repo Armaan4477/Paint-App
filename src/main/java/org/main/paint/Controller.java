@@ -11,10 +11,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
 
@@ -273,6 +271,7 @@ public class Controller {
             // First click creates new text box if no active one and not clicked on existing
             if (activeTextBox == null && clickedBox == null) {
                 saveState();
+                // Create text box with y coordinate representing baseline, not top
                 createNewTextBox(event.getX(), event.getY());
             }
         }
@@ -300,6 +299,8 @@ public class Controller {
             // Normal drawing mode
             isDrawing = true;
             if (currentBrush != null) {
+                // Take snapshot before starting new stroke
+                saveState();
                 currentBrush.draw(gc, event.getX(), event.getY());
             }
         }
@@ -320,8 +321,8 @@ public class Controller {
                 redrawCanvas();
             }
         } else {
-            // Normal drawing
-            if (currentBrush != null) {
+            // Normal drawing - draw on top of saved state
+            if (isDrawing && currentBrush != null) {
                 currentBrush.draw(gc, event.getX(), event.getY());
             }
         }
@@ -334,7 +335,6 @@ public class Controller {
                 saveState();  // Save state after moving text box
             }
         } else if (isDrawing) {
-            saveState(); // Save state after drawing
             isDrawing = false;
             
             if (currentBrush instanceof Brush.PencilBrush) {
@@ -377,7 +377,12 @@ public class Controller {
         boolean isBold = boldCheckBox.isSelected();
         boolean isItalic = italicCheckBox.isSelected();
         
-        TextBox newTextBox = new TextBox(initialText, x, y, currentColor, 
+        // Adjust Y position to account for text baseline
+        // This converts the clicked Y position (which would be the top of where user clicked)
+        // to proper baseline Y coordinate (which is what TextBox expects)
+        double baselineY = y + fontSize * 0.7; // Approximate baseline offset
+        
+        TextBox newTextBox = new TextBox(initialText, x, baselineY, currentColor, 
                                         fontFamily, fontSize, isBold, isItalic);
         
         textBoxes.add(newTextBox);
@@ -447,35 +452,37 @@ public class Controller {
 
     // Helper method to redraw the entire canvas with all objects
     private void redrawCanvas() {
-        // Always clear canvas first
+        // First draw the white background
         gc.setFill(Color.WHITE);
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
-        // Draw the background (drawing) from the undo stack if available
+        // Then draw the latest canvas state from undo stack
         if (!undoStack.isEmpty()) {
             gc.drawImage(undoStack.peek(), 0, 0);
         }
 
-        // Draw all text boxes
+        // Finally draw all text boxes
         for (TextBox box : textBoxes) {
             drawTextBox(box);
         }
     }
-    
+
     private void drawTextBox(TextBox box) {
         gc.setFill(box.getColor());
         gc.setFont(box.getFont());
-        gc.fillText(box.getText(), box.getX(), box.getY());
+        
+        // Draw the text at the baseline position
+        gc.fillText(box.getText(), box.getX(), box.getBaselineY());
         
         // Draw selection indicator or editing cursor
         if (box == selectedTextBox) {
             double width = box.getWidth();
             double height = box.getFontSize();
             
-            // Draw selection rectangle
+            // Draw selection rectangle - now positioned correctly relative to text
             gc.setStroke(Color.BLUE);
             gc.setLineDashes(2);
-            gc.strokeRect(box.getX() - 2, box.getY() - height, width + 4, height + 4);
+            gc.strokeRect(box.getX() - 2, box.getTopY() - 2, width + 4, height + 4);
             gc.setLineDashes(null);
             
             // Draw editing indicator
@@ -483,7 +490,7 @@ public class Controller {
                 // Draw text cursor
                 double cursorX = box.getX() + box.getWidth();
                 gc.setStroke(Color.BLACK);
-                gc.strokeLine(cursorX, box.getY() - height, cursorX, box.getY());
+                gc.strokeLine(cursorX, box.getTopY(), cursorX, box.getBaselineY());
             }
         }
     }
@@ -503,38 +510,35 @@ public class Controller {
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
     
-    // New methods for undo/redo functionality that include text boxes
+    // Save the current canvas (drawing + text) as the new background
     private void saveState() {
-        // Save only the background (drawing) part, not the text boxes
-        WritableImage snapshot = new WritableImage((int)canvas.getWidth(), (int)canvas.getHeight());
-        // Clear canvas and draw only the background (without text boxes)
-        gc.setFill(Color.WHITE);
-        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        if (!undoStack.isEmpty()) {
-            gc.drawImage(undoStack.peek(), 0, 0);
-        }
-        // Take snapshot of the current background
-        canvas.snapshot(null, snapshot);
-
-        // Now redraw everything (including text boxes) for the user to see
+        // Take clean snapshot of the canvas without text boxes
+        WritableImage currentDrawing = new WritableImage(
+            (int)canvas.getWidth(), 
+            (int)canvas.getHeight()
+        );
+        
+        // Store current text boxes temporarily
+        List<TextBox> tempTextBoxes = new ArrayList<>(textBoxes);
+        textBoxes.clear();
+        
+        // Redraw only the canvas content
         redrawCanvas();
-
-        undoStack.push(snapshot);
-
-        // Save text boxes state by creating a deep copy
-        List<TextBox> textBoxesCopy = new ArrayList<>();
-        for (TextBox box : textBoxes) {
-            textBoxesCopy.add(new TextBox(box.getText(), box.getX(), box.getY(), 
-                                         box.getColor(), box.getFontFamily(), 
-                                         box.getFontSize(), box.isBold(), 
-                                         box.isItalic()));
-        }
-        textBoxUndoStack.push(textBoxesCopy);
-
+        canvas.snapshot(null, currentDrawing);
+        
+        // Restore text boxes
+        textBoxes = new ArrayList<>(tempTextBoxes);
+        
+        // Push states to undo stack
+        undoStack.push(currentDrawing);
+        textBoxUndoStack.push(new ArrayList<>(tempTextBoxes));
+        
         // Clear redo stacks
         redoStack.clear();
         textBoxRedoStack.clear();
-
+        
+        // Redraw everything
+        redrawCanvas();
         updateUndoRedoButtons();
     }
 
