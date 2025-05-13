@@ -22,7 +22,7 @@ public class Controller {
     @FXML private Canvas canvas;
     @FXML private ComboBox<String> brushTypeComboBox;
     @FXML private Slider brushSizeSlider;
-    @FXML private HBox colorPalette;
+    @FXML private ColorPicker colorPicker; // Add ColorPicker
     @FXML private Label coordinatesLabel;
     @FXML private Button undoButton;
     @FXML private Button redoButton;
@@ -40,10 +40,6 @@ public class Controller {
     private GraphicsContext gc;
     private Color currentColor = Color.BLACK;
     private Brush currentBrush;
-    private final List<Color> colors = Arrays.asList(
-        Color.BLACK, Color.WHITE, Color.RED, Color.GREEN, Color.BLUE, 
-        Color.YELLOW, Color.PURPLE, Color.ORANGE, Color.PINK, Color.BROWN
-    );
     
     // Text mode variables
     private boolean textMode = false;
@@ -68,11 +64,23 @@ public class Controller {
         saveState(); // Save initial blank canvas state
         
         // Initialize brush types (remove "Text")
-        brushTypeComboBox.getItems().addAll("Circle", "Square", "Pencil", "Spray");
+        brushTypeComboBox.getItems().addAll(
+            "Circle", "Square", "Pencil", "Spray", 
+            "Line", "Triangle", "Star" // New brushes
+        );
         brushTypeComboBox.setValue("Pencil");
         
-        // Create color palette
-        createColorPalette();
+        // Initialize ColorPicker
+        colorPicker.setValue(currentColor);
+        colorPicker.setOnAction(e -> {
+            currentColor = colorPicker.getValue();
+            updateBrush();
+            // Update selected text box color if one is selected
+            if (selectedTextBox != null) {
+                selectedTextBox.setColor(currentColor);
+                redrawCanvas();
+            }
+        });
         
         // Initialize text controls
         initializeTextControls();
@@ -211,38 +219,6 @@ public class Controller {
         textControlsBox.setManaged(textMode);
     }
 
-    private void createColorPalette() {
-        for (Color color : colors) {
-            Rectangle rect = new Rectangle(20, 20, color);
-            rect.getStyleClass().add("color-rect");
-            
-            if (color == currentColor) {
-                rect.getStyleClass().add("color-rect-selected");
-            }
-            
-            rect.setOnMouseClicked(e -> {
-                currentColor = color;
-                updateBrush();
-                
-                // Update selection styling
-                colorPalette.getChildren().forEach(node -> {
-                    if (node instanceof Rectangle) {
-                        ((Rectangle) node).getStyleClass().remove("color-rect-selected");
-                    }
-                });
-                rect.getStyleClass().add("color-rect-selected");
-                
-                // Update selected text box color if one is selected
-                if (selectedTextBox != null) {
-                    selectedTextBox.setColor(color);
-                    redrawCanvas();
-                }
-            });
-            
-            colorPalette.getChildren().add(rect);
-        }
-    }
-    
     private void updateBrush() {
         double size = brushSizeSlider.getValue();
         
@@ -259,6 +235,15 @@ public class Controller {
                     break;
                 case "Spray":
                     currentBrush = new Brush.SprayBrush(size, currentColor);
+                    break;
+                case "Line":
+                    currentBrush = new Brush.LineBrush(size, currentColor);
+                    break;
+                case "Triangle":
+                    currentBrush = new Brush.TriangleBrush(size, currentColor);
+                    break;
+                case "Star":
+                    currentBrush = new Brush.StarBrush(size, currentColor);
                     break;
                 case "Pencil":
                 default:
