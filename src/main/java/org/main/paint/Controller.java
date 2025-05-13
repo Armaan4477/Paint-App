@@ -456,13 +456,15 @@ public class Controller {
 
     // Helper method to redraw the entire canvas with all objects
     private void redrawCanvas() {
-        // Clear canvas and redraw the base image
+        // Always clear canvas first
+        gc.setFill(Color.WHITE);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        // Draw the background (drawing) from the undo stack if available
         if (!undoStack.isEmpty()) {
             gc.drawImage(undoStack.peek(), 0, 0);
-        } else {
-            clearCanvas();
         }
-        
+
         // Draw all text boxes
         for (TextBox box : textBoxes) {
             drawTextBox(box);
@@ -512,11 +514,22 @@ public class Controller {
     
     // New methods for undo/redo functionality that include text boxes
     private void saveState() {
-        // Save canvas state
+        // Save only the background (drawing) part, not the text boxes
         WritableImage snapshot = new WritableImage((int)canvas.getWidth(), (int)canvas.getHeight());
+        // Clear canvas and draw only the background (without text boxes)
+        gc.setFill(Color.WHITE);
+        gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        if (!undoStack.isEmpty()) {
+            gc.drawImage(undoStack.peek(), 0, 0);
+        }
+        // Take snapshot of the current background
         canvas.snapshot(null, snapshot);
+
+        // Now redraw everything (including text boxes) for the user to see
+        redrawCanvas();
+
         undoStack.push(snapshot);
-        
+
         // Save text boxes state by creating a deep copy
         List<TextBox> textBoxesCopy = new ArrayList<>();
         for (TextBox box : textBoxes) {
@@ -526,28 +539,30 @@ public class Controller {
                                          box.isItalic()));
         }
         textBoxUndoStack.push(textBoxesCopy);
-        
+
         // Clear redo stacks
         redoStack.clear();
         textBoxRedoStack.clear();
-        
+
         updateUndoRedoButtons();
     }
-    
+
     @FXML
     private void handleUndo() {
         if (undoStack.size() > 1 && !textBoxUndoStack.isEmpty()) { // Keep at least the initial state
             // Push current states to redo stacks
             redoStack.push(undoStack.pop());
             textBoxRedoStack.push(textBoxUndoStack.pop());
-            
+
             // Restore previous states
             Image lastCanvasState = undoStack.peek();
             List<TextBox> lastTextBoxState = textBoxUndoStack.peek();
-            
-            // Restore canvas
+
+            // Restore canvas background
+            gc.setFill(Color.WHITE);
+            gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
             gc.drawImage(lastCanvasState, 0, 0);
-            
+
             // Restore text boxes
             textBoxes.clear();
             if (lastTextBoxState != null) {
@@ -558,11 +573,11 @@ public class Controller {
                                              box.isItalic()));
                 }
             }
-            
+
             // Deselect any text box
             activeTextBox = null;
             selectedTextBox = null;
-            
+
             redrawCanvas();
             updateUndoRedoButtons();
         }
@@ -574,10 +589,12 @@ public class Controller {
             // Move the redone state to the undo stack
             undoStack.push(redoStack.pop());
             textBoxUndoStack.push(textBoxRedoStack.pop());
-            
-            // Restore canvas
+
+            // Restore canvas background
+            gc.setFill(Color.WHITE);
+            gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
             gc.drawImage(undoStack.peek(), 0, 0);
-            
+
             // Restore text boxes
             textBoxes.clear();
             List<TextBox> textBoxState = textBoxUndoStack.peek();
@@ -589,11 +606,11 @@ public class Controller {
                                              box.isItalic()));
                 }
             }
-            
+
             // Deselect any text box
             activeTextBox = null;
             selectedTextBox = null;
-            
+
             redrawCanvas();
             updateUndoRedoButtons();
         }
