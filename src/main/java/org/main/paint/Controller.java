@@ -74,6 +74,7 @@ public class Controller {
             updateBrush();
             toggleTextControls();
             if (!textMode && activeTextBox != null) finalizeActiveTextBox();
+            updateUndoRedoButtons();  // <-- ensure buttons reflect the active stack
         });
         canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, this::handleMousePressed);
         canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::handleMouseDragged);
@@ -180,7 +181,7 @@ public class Controller {
             if (clickedBox == null && activeTextBox != null) { finalizeActiveTextBox(); return; }
             if (event.getClickCount() == 2 && clickedBox != null) { startEditingTextBox(clickedBox); return; }
             if (activeTextBox == null && clickedBox == null) {
-                saveTextState();  // text-only
+                // saveTextState();  // removed: createNewTextBox already saves text state
                 createNewTextBox(event.getX(), event.getY());
             }
         }
