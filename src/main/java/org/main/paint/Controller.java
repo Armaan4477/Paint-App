@@ -196,10 +196,8 @@ public class Controller {
                 dragStartX = event.getX(); dragStartY = event.getY(); isDraggingTextBox = true;
             } else deselectTextBox();
         } else {
-            saveBrushState();    // start of a new stroke
             isDrawing = true;
             if (currentBrush != null) {
-                if (!isDrawing) saveBrushState();
                 currentBrush.draw(gc, event.getX(), event.getY());
             }
         }
@@ -253,7 +251,6 @@ public class Controller {
     }
 
     private void createNewTextBox(double x, double y) {
-        saveTextState();  // text-only
         String initialText = "Enter text...";
         int fontSize = fontSizeComboBox.getValue();
         String fontFamily = fontFamilyComboBox.getValue();
