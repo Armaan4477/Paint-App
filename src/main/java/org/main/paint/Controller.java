@@ -299,8 +299,10 @@ public class Controller {
             // Normal drawing mode
             isDrawing = true;
             if (currentBrush != null) {
-                // Take snapshot before starting new stroke
-                saveState();
+                // Take snapshot before starting new stroke but don't clear the canvas
+                if (!isDrawing) { // Only save state when starting a new stroke
+                    saveState();
+                }
                 currentBrush.draw(gc, event.getX(), event.getY());
             }
         }
