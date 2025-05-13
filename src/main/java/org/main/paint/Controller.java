@@ -52,7 +52,8 @@ public class Controller {
     public void initialize() {
         gc = canvas.getGraphicsContext2D();
         clearCanvas();
-        saveState();
+        saveBrushState();         // initial brush snapshot
+        saveTextState();          // initial empty text snapshot
         brushTypeComboBox.getItems().addAll("Circle","Square","Pencil","Spray","Line","Triangle","Star");
         brushTypeComboBox.setValue("Pencil");
         colorPicker.setValue(currentColor);
@@ -91,7 +92,7 @@ public class Controller {
             if (selectedTextBox.isEditing()) {
                 if (event.getCode().toString().equals("BACK_SPACE")) return;
             }
-            saveState();
+            saveTextState();   // text-only
             textBoxes.remove(selectedTextBox);
             selectedTextBox = null;
             redrawCanvas();
@@ -179,7 +180,7 @@ public class Controller {
             if (clickedBox == null && activeTextBox != null) { finalizeActiveTextBox(); return; }
             if (event.getClickCount() == 2 && clickedBox != null) { startEditingTextBox(clickedBox); return; }
             if (activeTextBox == null && clickedBox == null) {
-                saveState();
+                saveTextState();  // text-only
                 createNewTextBox(event.getX(), event.getY());
             }
         }
@@ -193,9 +194,10 @@ public class Controller {
                 dragStartX = event.getX(); dragStartY = event.getY(); isDraggingTextBox = true;
             } else deselectTextBox();
         } else {
+            saveBrushState();    // start of a new stroke
             isDrawing = true;
             if (currentBrush != null) {
-                if (!isDrawing) saveState();
+                if (!isDrawing) saveBrushState();
                 currentBrush.draw(gc, event.getX(), event.getY());
             }
         }
@@ -219,7 +221,9 @@ public class Controller {
     private void handleMouseReleased(MouseEvent event) {
         if (textMode) {
             isDraggingTextBox = false;
-            if (selectedTextBox != null && !selectedTextBox.isEditing()) saveState();
+            if (selectedTextBox != null && !selectedTextBox.isEditing()) {
+                saveTextState();  // after move
+            }
         } else if (isDrawing) {
             isDrawing = false;
             if (currentBrush instanceof Brush.PencilBrush)
@@ -246,7 +250,7 @@ public class Controller {
     }
 
     private void createNewTextBox(double x, double y) {
-        saveState();
+        saveTextState();  // text-only
         String initialText = "Enter text...";
         int fontSize = fontSizeComboBox.getValue();
         String fontFamily = fontFamilyComboBox.getValue();
@@ -287,7 +291,7 @@ public class Controller {
                 activeTextBox.setEditing(false);
             }
             activeTextBox = null;
-            saveState();
+            saveTextState(); // text-only
             redrawCanvas();
         }
     }
@@ -339,8 +343,9 @@ public class Controller {
     }
 
     @FXML private void handleClearCanvas() {
-        saveState();
+        saveBrushState();    // clear canvas undo
         clearCanvas();
+        saveTextState();     // clear text undo
         textBoxes.clear();
         activeTextBox = null;
         selectedTextBox = null;
@@ -352,75 +357,81 @@ public class Controller {
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
-    private void saveState() {
-        WritableImage currentDrawing = new WritableImage(
-            (int)canvas.getWidth(), 
-            (int)canvas.getHeight()
-        );
-        List<TextBox> tempTextBoxes = new ArrayList<>(textBoxes);
-        textBoxes.clear();
-        redrawCanvas();
-        canvas.snapshot(null, currentDrawing);
-        textBoxes = new ArrayList<>(tempTextBoxes);
-        undoStack.push(currentDrawing);
-        textBoxUndoStack.push(new ArrayList<>(tempTextBoxes));
+    private void saveBrushState() {
+        WritableImage snap = new WritableImage((int)canvas.getWidth(), (int)canvas.getHeight());
+        canvas.snapshot(null, snap);
+        undoStack.push(snap);
         redoStack.clear();
+        updateUndoRedoButtons();
+    }
+
+    private void saveTextState() {
+        textBoxUndoStack.push(new ArrayList<>(textBoxes));
         textBoxRedoStack.clear();
-        redrawCanvas();
         updateUndoRedoButtons();
     }
 
     @FXML private void handleUndo() {
-        if (undoStack.size() > 1 && !textBoxUndoStack.isEmpty()) {
-            redoStack.push(undoStack.pop());
-            textBoxRedoStack.push(textBoxUndoStack.pop());
-            Image lastCanvasState = undoStack.peek();
-            List<TextBox> lastTextBoxState = textBoxUndoStack.peek();
-            gc.setFill(Color.WHITE);
-            gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-            gc.drawImage(lastCanvasState, 0, 0);
-            textBoxes.clear();
-            if (lastTextBoxState != null) {
-                for (TextBox box : lastTextBoxState) {
-                    textBoxes.add(new TextBox(box.getText(), box.getX(), box.getY(),
-                                             box.getColor(), box.getFontFamily(),
-                                             box.getFontSize(), box.isBold(),
-                                             box.isItalic()));
-                }
+        if (textMode) {
+            if (textBoxUndoStack.size() > 1) {
+                textBoxRedoStack.push(textBoxUndoStack.pop());
+                List<TextBox> prev = textBoxUndoStack.peek();
+                textBoxes.clear();
+                if (prev!=null) prev.forEach(b->
+                    textBoxes.add(new TextBox(b.getText(),b.getX(),b.getY(),
+                                              b.getColor(),b.getFontFamily(),
+                                              b.getFontSize(),b.isBold(),b.isItalic()))
+                );
+                activeTextBox = selectedTextBox = null;
+                redrawCanvas();
             }
-            activeTextBox = null;
-            selectedTextBox = null;
-            redrawCanvas();
-            updateUndoRedoButtons();
+        } else {
+            if (undoStack.size() > 1) {
+                redoStack.push(undoStack.pop());
+                Image img = undoStack.peek();
+                gc.setFill(Color.WHITE);
+                gc.fillRect(0,0,canvas.getWidth(),canvas.getHeight());
+                gc.drawImage(img,0,0);
+                redrawCanvas();
+            }
         }
+        updateUndoRedoButtons();
     }
 
     @FXML private void handleRedo() {
-        if (!redoStack.isEmpty() && !textBoxRedoStack.isEmpty()) {
-            undoStack.push(redoStack.pop());
-            textBoxUndoStack.push(textBoxRedoStack.pop());
-            gc.setFill(Color.WHITE);
-            gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
-            gc.drawImage(undoStack.peek(), 0, 0);
-            textBoxes.clear();
-            List<TextBox> textBoxState = textBoxUndoStack.peek();
-            if (textBoxState != null) {
-                for (TextBox box : textBoxState) {
-                    textBoxes.add(new TextBox(box.getText(), box.getX(), box.getY(),
-                                             box.getColor(), box.getFontFamily(), 
-                                             box.getFontSize(), box.isBold(),
-                                             box.isItalic()));
-                }
+        if (textMode) {
+            if (!textBoxRedoStack.isEmpty()) {
+                textBoxUndoStack.push(textBoxRedoStack.pop());
+                List<TextBox> next = textBoxUndoStack.peek();
+                textBoxes.clear();
+                if (next!=null) next.forEach(b->
+                    textBoxes.add(new TextBox(b.getText(),b.getX(),b.getY(),
+                                              b.getColor(),b.getFontFamily(),
+                                              b.getFontSize(),b.isBold(),b.isItalic()))
+                );
+                activeTextBox = selectedTextBox = null;
+                redrawCanvas();
             }
-            activeTextBox = null;
-            selectedTextBox = null;
-            redrawCanvas();
-            updateUndoRedoButtons();
+        } else {
+            if (!redoStack.isEmpty()) {
+                undoStack.push(redoStack.pop());
+                Image img = undoStack.peek();
+                gc.setFill(Color.WHITE);
+                gc.fillRect(0,0,canvas.getWidth(),canvas.getHeight());
+                gc.drawImage(img,0,0);
+                redrawCanvas();
+            }
         }
+        updateUndoRedoButtons();
     }
 
     private void updateUndoRedoButtons() {
-        undoButton.setDisable(undoStack.size() <= 1);
-        redoButton.setDisable(redoStack.isEmpty());
+        if (textMode) {
+            undoButton.setDisable(textBoxUndoStack.size() <= 1);
+            redoButton.setDisable(textBoxRedoStack.isEmpty());
+        } else {
+            undoButton.setDisable(undoStack.size() <= 1);
+            redoButton.setDisable(redoStack.isEmpty());
+        }
     }
 }
