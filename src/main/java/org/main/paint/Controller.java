@@ -373,6 +373,9 @@ public class Controller {
     }
     
     private void createNewTextBox(double x, double y) {
+        // Save state before adding new text box to preserve existing drawings
+        saveState();
+        
         String initialText = "Enter text...";
         int fontSize = fontSizeComboBox.getValue();
         String fontFamily = fontFamilyComboBox.getValue();
