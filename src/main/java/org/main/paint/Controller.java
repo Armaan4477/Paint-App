@@ -35,6 +35,7 @@ public class Controller {
     @FXML private ComboBox<Integer> fontSizeComboBox;
     @FXML private CheckBox boldCheckBox;
     @FXML private CheckBox italicCheckBox;
+    @FXML private CheckBox textModeCheckBox; // <-- Add this line
     
     private GraphicsContext gc;
     private Color currentColor = Color.BLACK;
@@ -66,8 +67,8 @@ public class Controller {
         clearCanvas();
         saveState(); // Save initial blank canvas state
         
-        // Initialize brush types
-        brushTypeComboBox.getItems().addAll("Circle", "Square", "Pencil", "Spray", "Text");
+        // Initialize brush types (remove "Text")
+        brushTypeComboBox.getItems().addAll("Circle", "Square", "Pencil", "Spray");
         brushTypeComboBox.setValue("Pencil");
         
         // Create color palette
@@ -81,7 +82,13 @@ public class Controller {
         
         // Add listeners
         brushTypeComboBox.setOnAction(e -> {
-            textMode = "Text".equals(brushTypeComboBox.getValue());
+            updateBrush();
+        });
+        brushSizeSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateBrush());
+        
+        // Text mode toggle
+        textModeCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            textMode = newVal;
             updateBrush();
             toggleTextControls();
             
@@ -90,7 +97,6 @@ public class Controller {
                 finalizeActiveTextBox();
             }
         });
-        brushSizeSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateBrush());
         
         // Add canvas event handlers
         canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, this::handleMousePressed);

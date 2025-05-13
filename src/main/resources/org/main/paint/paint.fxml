@@ -24,7 +24,11 @@
                 <Button fx:id="redoButton" text="Redo" onAction="#handleRedo"/>
                 <Button fx:id="clearButton" text="Clear Canvas" onAction="#handleClearCanvas"/>
             </HBox>
-            <!-- New Text Controls -->
+            <!-- New Text Mode Toggle -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <CheckBox fx:id="textModeCheckBox" text="Text Mode"/>
+            </HBox>
+            <!-- Text Controls now outside brush controls -->
             <HBox fx:id="textControlsBox" spacing="10" alignment="CENTER_LEFT" visible="false" managed="false">
                 <TextField fx:id="textInput" promptText="Enter text here" prefWidth="200"/>
                 <Label text="Font:"/>
