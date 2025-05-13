@@ -2,6 +2,9 @@ package org.main.paint;
 
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
+import javafx.scene.text.FontWeight;
 
 public abstract class Brush {
     protected double size;
@@ -102,6 +105,49 @@ public abstract class Brush {
                     gc.fillOval(x + offsetX, y + offsetY, 1, 1);
                 }
             }
+        }
+    }
+    
+    public static class TextBrush extends Brush {
+        private String text;
+        private String fontFamily;
+        private boolean isBold;
+        private boolean isItalic;
+        
+        public TextBrush(double size, Color color, String text, String fontFamily, boolean isBold, boolean isItalic) {
+            super(size, color);
+            this.text = text;
+            this.fontFamily = fontFamily;
+            this.isBold = isBold;
+            this.isItalic = isItalic;
+        }
+        
+        @Override
+        public void draw(GraphicsContext gc, double x, double y) {
+            gc.setFill(color);
+            
+            FontWeight weight = isBold ? FontWeight.BOLD : FontWeight.NORMAL;
+            FontPosture posture = isItalic ? FontPosture.ITALIC : FontPosture.REGULAR;
+            
+            Font font = Font.font(fontFamily, weight, posture, size);
+            gc.setFont(font);
+            gc.fillText(text, x, y);
+        }
+        
+        public void setText(String text) {
+            this.text = text;
+        }
+        
+        public void setFontFamily(String fontFamily) {
+            this.fontFamily = fontFamily;
+        }
+        
+        public void setBold(boolean bold) {
+            this.isBold = bold;
+        }
+        
+        public void setItalic(boolean italic) {
+            this.isItalic = italic;
         }
     }
 }

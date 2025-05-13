@@ -9,6 +9,11 @@
     -fx-background-color: #45a049;
 }
 
+.button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #666666;
+}
+
 .canvas-pane {
     -fx-background-color: white;
     -fx-border-color: #cccccc;
@@ -31,5 +36,25 @@
 }
 
 .slider .thumb {
+    -fx-background-color: #4CAF50;
+}
+
+/* New styles for text controls */
+.text-input {
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 3px;
+}
+
+.check-box .box {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 3px;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+.check-box:selected .box {
     -fx-background-color: #4CAF50;
 }

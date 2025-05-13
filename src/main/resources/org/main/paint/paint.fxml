@@ -20,13 +20,25 @@
                 <HBox fx:id="colorPalette" spacing="5" alignment="CENTER_LEFT">
                     <!-- Color rectangles will be added programmatically -->
                 </HBox>
+                <Button fx:id="undoButton" text="Undo" onAction="#handleUndo"/>
+                <Button fx:id="redoButton" text="Redo" onAction="#handleRedo"/>
                 <Button fx:id="clearButton" text="Clear Canvas" onAction="#handleClearCanvas"/>
+            </HBox>
+            <!-- New Text Controls -->
+            <HBox fx:id="textControlsBox" spacing="10" alignment="CENTER_LEFT" visible="false" managed="false">
+                <TextField fx:id="textInput" promptText="Enter text here" prefWidth="200"/>
+                <Label text="Font:"/>
+                <ComboBox fx:id="fontFamilyComboBox" prefWidth="150"/>
+                <Label text="Font Size:"/>
+                <ComboBox fx:id="fontSizeComboBox" prefWidth="80"/>
+                <CheckBox fx:id="boldCheckBox" text="Bold"/>
+                <CheckBox fx:id="italicCheckBox" text="Italic"/>
             </HBox>
         </VBox>
     </top>
     <center>
         <StackPane style="-fx-background-color: #f0f0f0;">
-            <Canvas fx:id="canvas" width="780" height="500"/>
+            <Canvas fx:id="canvas" width="1180" height="600"/>
         </StackPane>
     </center>
     <bottom>
