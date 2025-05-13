@@ -37,7 +37,7 @@
         </VBox>
     </top>
     <center>
-        <StackPane style="-fx-background-color: #f0f0f0;">
+        <StackPane fx:id="canvasContainer" style="-fx-background-color: #f0f0f0;">
             <Canvas fx:id="canvas" width="1180" height="600"/>
         </StackPane>
     </center>

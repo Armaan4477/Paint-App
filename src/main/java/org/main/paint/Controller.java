@@ -6,11 +6,14 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
@@ -23,8 +26,9 @@ public class Controller {
     @FXML private Label coordinatesLabel;
     @FXML private Button undoButton;
     @FXML private Button redoButton;
+    @FXML private StackPane canvasContainer;
     
-    // New text controls
+    // Text controls
     @FXML private HBox textControlsBox;
     @FXML private TextField textInput;
     @FXML private ComboBox<String> fontFamilyComboBox;
@@ -40,9 +44,19 @@ public class Controller {
         Color.YELLOW, Color.PURPLE, Color.ORANGE, Color.PINK, Color.BROWN
     );
     
+    // Text mode variables
+    private boolean textMode = false;
+    private List<TextBox> textBoxes = new ArrayList<>();
+    private TextBox activeTextBox = null;
+    private TextBox selectedTextBox = null;
+    private double dragStartX, dragStartY;
+    private boolean isDraggingTextBox = false;
+    
     // For undo/redo functionality
     private Stack<Image> undoStack = new Stack<>();
     private Stack<Image> redoStack = new Stack<>();
+    private Stack<List<TextBox>> textBoxUndoStack = new Stack<>();
+    private Stack<List<TextBox>> textBoxRedoStack = new Stack<>();
     private boolean isDrawing = false;
 
     @FXML
@@ -50,7 +64,7 @@ public class Controller {
         // Initialize canvas and graphics context
         gc = canvas.getGraphicsContext2D();
         clearCanvas();
-        saveCanvasState(); // Save initial blank canvas state
+        saveState(); // Save initial blank canvas state
         
         // Initialize brush types
         brushTypeComboBox.getItems().addAll("Circle", "Square", "Pencil", "Spray", "Text");
@@ -67,8 +81,14 @@ public class Controller {
         
         // Add listeners
         brushTypeComboBox.setOnAction(e -> {
+            textMode = "Text".equals(brushTypeComboBox.getValue());
             updateBrush();
             toggleTextControls();
+            
+            // Finalize any active text when switching modes
+            if (!textMode && activeTextBox != null) {
+                finalizeActiveTextBox();
+            }
         });
         brushSizeSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateBrush());
         
@@ -77,9 +97,59 @@ public class Controller {
         canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::handleMouseDragged);
         canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, this::handleMouseReleased);
         canvas.addEventHandler(MouseEvent.MOUSE_MOVED, this::handleMouseMoved);
+        canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleMouseClicked);
+        
+        // Add keyboard event handler for text editing
+        canvas.setOnKeyTyped(this::handleKeyTyped);
+        canvas.setFocusTraversable(true);
         
         // Initialize undo/redo buttons as disabled
         updateUndoRedoButtons();
+        
+        // Add a new delete key handler
+        canvas.setOnKeyPressed(this::handleKeyPressed);
+    }
+
+    private void handleKeyPressed(KeyEvent event) {
+        if (selectedTextBox != null && (event.getCode().toString().equals("DELETE") || 
+                                        event.getCode().toString().equals("BACK_SPACE"))) {
+            if (selectedTextBox.isEditing()) {
+                // If editing, let the handleKeyTyped method handle backspace
+                if (event.getCode().toString().equals("BACK_SPACE")) {
+                    return;
+                }
+            }
+            // Otherwise, delete the entire text box
+            saveState();
+            textBoxes.remove(selectedTextBox);
+            selectedTextBox = null;
+            redrawCanvas();
+        }
+    }
+    
+    private void handleKeyTyped(KeyEvent event) {
+        if (activeTextBox != null && activeTextBox.isEditing()) {
+            String character = event.getCharacter();
+            String currentText = activeTextBox.getText();
+            
+            if (character.equals("\b")) { // Backspace
+                if (currentText.length() > 0) {
+                    activeTextBox.setText(currentText.substring(0, currentText.length() - 1));
+                }
+            } else if (character.equals("\r") || character.equals("\n")) { // Enter key
+                finalizeActiveTextBox();
+                return;
+            } else if (!character.equals("\t")) { // Ignore tab key
+                activeTextBox.setText(currentText + character);
+            }
+            
+            // Update text input field to match text box content
+            if (textInput != null) {
+                textInput.setText(activeTextBox.getText());
+            }
+            
+            redrawCanvas();
+        }
     }
 
     private void initializeTextControls() {
@@ -94,17 +164,45 @@ public class Controller {
         fontSizeComboBox.setValue(20);
         
         // Add listeners for text controls
-        textInput.textProperty().addListener((obs, oldVal, newVal) -> updateBrush());
-        fontFamilyComboBox.setOnAction(e -> updateBrush());
-        fontSizeComboBox.setOnAction(e -> updateBrush());
-        boldCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> updateBrush());
-        italicCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> updateBrush());
+        textInput.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (activeTextBox != null) {
+                activeTextBox.setText(newVal);
+                redrawCanvas();
+            }
+        });
+        
+        fontFamilyComboBox.setOnAction(e -> {
+            if (selectedTextBox != null) {
+                selectedTextBox.setFontFamily(fontFamilyComboBox.getValue());
+                redrawCanvas();
+            }
+        });
+        
+        fontSizeComboBox.setOnAction(e -> {
+            if (selectedTextBox != null) {
+                selectedTextBox.setFontSize(fontSizeComboBox.getValue());
+                redrawCanvas();
+            }
+        });
+        
+        boldCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (selectedTextBox != null) {
+                selectedTextBox.setBold(newVal);
+                redrawCanvas();
+            }
+        });
+        
+        italicCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (selectedTextBox != null) {
+                selectedTextBox.setItalic(newVal);
+                redrawCanvas();
+            }
+        });
     }
     
     private void toggleTextControls() {
-        boolean isTextBrush = "Text".equals(brushTypeComboBox.getValue());
-        textControlsBox.setVisible(isTextBrush);
-        textControlsBox.setManaged(isTextBrush);
+        textControlsBox.setVisible(textMode);
+        textControlsBox.setManaged(textMode);
     }
 
     private void createColorPalette() {
@@ -127,6 +225,12 @@ public class Controller {
                     }
                 });
                 rect.getStyleClass().add("color-rect-selected");
+                
+                // Update selected text box color if one is selected
+                if (selectedTextBox != null) {
+                    selectedTextBox.setColor(color);
+                    redrawCanvas();
+                }
             });
             
             colorPalette.getChildren().add(rect);
@@ -136,75 +240,268 @@ public class Controller {
     private void updateBrush() {
         double size = brushSizeSlider.getValue();
         
-        switch (brushTypeComboBox.getValue()) {
-            case "Circle":
-                currentBrush = new Brush.CircleBrush(size, currentColor);
-                break;
-            case "Square":
-                currentBrush = new Brush.SquareBrush(size, currentColor);
-                break;
-            case "Spray":
-                currentBrush = new Brush.SprayBrush(size, currentColor);
-                break;
-            case "Text":
-                String text = textInput.getText();
-                if (text == null || text.isEmpty()) {
-                    text = "Sample Text";
-                }
-                String fontFamily = fontFamilyComboBox.getValue();
-                boolean isBold = boldCheckBox.isSelected();
-                boolean isItalic = italicCheckBox.isSelected();
-                
-                // Use font size from combobox if Text brush is selected
-                if (fontSizeComboBox.getValue() != null) {
-                    size = fontSizeComboBox.getValue();
-                }
-                
-                currentBrush = new Brush.TextBrush(size, currentColor, text, fontFamily, isBold, isItalic);
-                break;
-            case "Pencil":
-            default:
-                currentBrush = new Brush.PencilBrush(size, currentColor);
-                break;
+        if (textMode) {
+            // Don't set a brush in text mode
+            currentBrush = null;
+        } else {
+            switch (brushTypeComboBox.getValue()) {
+                case "Circle":
+                    currentBrush = new Brush.CircleBrush(size, currentColor);
+                    break;
+                case "Square":
+                    currentBrush = new Brush.SquareBrush(size, currentColor);
+                    break;
+                case "Spray":
+                    currentBrush = new Brush.SprayBrush(size, currentColor);
+                    break;
+                case "Pencil":
+                default:
+                    currentBrush = new Brush.PencilBrush(size, currentColor);
+                    break;
+            }
+        }
+    }
+
+    private void handleMouseClicked(MouseEvent event) {
+        if (textMode) {
+            // Check if clicked on existing text box
+            TextBox clickedBox = findTextBoxAt(event.getX(), event.getY());
+            
+            // If clicked outside any text box but there's an active one, finalize it
+            if (clickedBox == null && activeTextBox != null) {
+                finalizeActiveTextBox();
+                return;
+            }
+            
+            // Double-click to edit existing text box
+            if (event.getClickCount() == 2 && clickedBox != null) {
+                startEditingTextBox(clickedBox);
+                return;
+            }
+            
+            // First click creates new text box if no active one and not clicked on existing
+            if (activeTextBox == null && clickedBox == null) {
+                saveState();
+                createNewTextBox(event.getX(), event.getY());
+            }
         }
     }
 
     private void handleMousePressed(MouseEvent event) {
-        isDrawing = true;
-        currentBrush.draw(gc, event.getX(), event.getY());
+        if (textMode) {
+            // In text mode, check if clicking on existing text
+            TextBox clickedBox = findTextBoxAt(event.getX(), event.getY());
+            if (clickedBox != null) {
+                if (selectedTextBox != clickedBox) {
+                    // Select this text box
+                    selectTextBox(clickedBox);
+                }
+                
+                // Prepare for potential drag operation
+                dragStartX = event.getX();
+                dragStartY = event.getY();
+                isDraggingTextBox = true;
+            } else {
+                // Clicking elsewhere deselects current text
+                deselectTextBox();
+            }
+        } else {
+            // Normal drawing mode
+            isDrawing = true;
+            if (currentBrush != null) {
+                currentBrush.draw(gc, event.getX(), event.getY());
+            }
+        }
     }
 
     private void handleMouseDragged(MouseEvent event) {
-        // Only continue drawing for non-text brushes
-        if (!(currentBrush instanceof Brush.TextBrush)) {
-            currentBrush.draw(gc, event.getX(), event.getY());
-        }
         coordinatesLabel.setText(String.format("Coordinates: %.0f, %.0f", event.getX(), event.getY()));
+        
+        if (textMode) {
+            // Move selected text box
+            if (isDraggingTextBox && selectedTextBox != null) {
+                double deltaX = event.getX() - dragStartX;
+                double deltaY = event.getY() - dragStartY;
+                selectedTextBox.setX(selectedTextBox.getX() + deltaX);
+                selectedTextBox.setY(selectedTextBox.getY() + deltaY);
+                dragStartX = event.getX();
+                dragStartY = event.getY();
+                redrawCanvas();
+            }
+        } else {
+            // Normal drawing
+            if (currentBrush != null) {
+                currentBrush.draw(gc, event.getX(), event.getY());
+            }
+        }
     }
     
     private void handleMouseReleased(MouseEvent event) {
-        if (isDrawing) {
-            saveCanvasState(); // Save state after drawing
+        if (textMode) {
+            isDraggingTextBox = false;
+            if (selectedTextBox != null && !selectedTextBox.isEditing()) {
+                saveState();  // Save state after moving text box
+            }
+        } else if (isDrawing) {
+            saveState(); // Save state after drawing
             isDrawing = false;
-            redoStack.clear(); // Clear redo stack after action
+            
+            if (currentBrush instanceof Brush.PencilBrush) {
+                ((Brush.PencilBrush) currentBrush).resetLastPosition();
+            }
         }
-        
-        if (currentBrush instanceof Brush.PencilBrush) {
-            ((Brush.PencilBrush) currentBrush).resetLastPosition();
-        }
-        
-        updateUndoRedoButtons();
     }
     
     private void handleMouseMoved(MouseEvent event) {
         coordinatesLabel.setText(String.format("Coordinates: %.0f, %.0f", event.getX(), event.getY()));
+        
+        // Change cursor if hovering over text box in text mode
+        if (textMode) {
+            TextBox hoveredBox = findTextBoxAt(event.getX(), event.getY());
+            if (hoveredBox != null) {
+                canvas.setCursor(javafx.scene.Cursor.HAND);
+            } else {
+                canvas.setCursor(javafx.scene.Cursor.TEXT);
+            }
+        } else {
+            canvas.setCursor(javafx.scene.Cursor.DEFAULT);
+        }
+    }
+
+    private TextBox findTextBoxAt(double x, double y) {
+        // Search in reverse to get top-most text box first (last added)
+        for (int i = textBoxes.size() - 1; i >= 0; i--) {
+            TextBox box = textBoxes.get(i);
+            if (box.contains(x, y)) {
+                return box;
+            }
+        }
+        return null;
+    }
+    
+    private void createNewTextBox(double x, double y) {
+        String initialText = "Enter text...";
+        int fontSize = fontSizeComboBox.getValue();
+        String fontFamily = fontFamilyComboBox.getValue();
+        boolean isBold = boldCheckBox.isSelected();
+        boolean isItalic = italicCheckBox.isSelected();
+        
+        TextBox newTextBox = new TextBox(initialText, x, y, currentColor, 
+                                        fontFamily, fontSize, isBold, isItalic);
+        
+        textBoxes.add(newTextBox);
+        startEditingTextBox(newTextBox);
+        redrawCanvas();
+    }
+    
+    private void startEditingTextBox(TextBox box) {
+        // Finalize any currently active text box
+        if (activeTextBox != null && activeTextBox != box) {
+            finalizeActiveTextBox();
+        }
+        
+        // Start editing this box
+        activeTextBox = box;
+        selectedTextBox = box;
+        box.setEditing(true);
+        
+        // Update UI controls to match text box properties
+        if (textInput != null) {
+            textInput.setText(box.getText());
+        }
+        fontFamilyComboBox.setValue(box.getFontFamily());
+        fontSizeComboBox.setValue((int)box.getFontSize());
+        boldCheckBox.setSelected(box.isBold());
+        italicCheckBox.setSelected(box.isItalic());
+        
+        // Select all text for immediate editing
+        textInput.selectAll();
+        textInput.requestFocus();
+        
+        redrawCanvas();
+    }
+    
+    private void finalizeActiveTextBox() {
+        if (activeTextBox != null) {
+            if (activeTextBox.getText().trim().isEmpty()) {
+                // Remove empty text boxes
+                textBoxes.remove(activeTextBox);
+            } else {
+                activeTextBox.setEditing(false);
+            }
+            activeTextBox = null;
+            saveState();
+            redrawCanvas();
+        }
+    }
+    
+    private void selectTextBox(TextBox box) {
+        deselectTextBox();
+        selectedTextBox = box;
+        
+        // Update UI controls to match text box properties
+        fontFamilyComboBox.setValue(box.getFontFamily());
+        fontSizeComboBox.setValue((int)box.getFontSize());
+        boldCheckBox.setSelected(box.isBold());
+        italicCheckBox.setSelected(box.isItalic());
+        textInput.setText(box.getText());
+        
+        redrawCanvas();
+    }
+    
+    private void deselectTextBox() {
+        selectedTextBox = null;
+        redrawCanvas();
+    }
+
+    // Helper method to redraw the entire canvas with all objects
+    private void redrawCanvas() {
+        // Clear canvas and redraw the base image
+        if (!undoStack.isEmpty()) {
+            gc.drawImage(undoStack.peek(), 0, 0);
+        } else {
+            clearCanvas();
+        }
+        
+        // Draw all text boxes
+        for (TextBox box : textBoxes) {
+            drawTextBox(box);
+        }
+    }
+    
+    private void drawTextBox(TextBox box) {
+        gc.setFill(box.getColor());
+        gc.setFont(box.getFont());
+        gc.fillText(box.getText(), box.getX(), box.getY());
+        
+        // Draw selection indicator or editing cursor
+        if (box == selectedTextBox) {
+            double width = box.getWidth();
+            double height = box.getFontSize();
+            
+            // Draw selection rectangle
+            gc.setStroke(Color.BLUE);
+            gc.setLineDashes(2);
+            gc.strokeRect(box.getX() - 2, box.getY() - height, width + 4, height + 4);
+            gc.setLineDashes(null);
+            
+            // Draw editing indicator
+            if (box.isEditing()) {
+                // Draw text cursor
+                double cursorX = box.getX() + box.getWidth();
+                gc.setStroke(Color.BLACK);
+                gc.strokeLine(cursorX, box.getY() - height, cursorX, box.getY());
+            }
+        }
     }
 
     @FXML
     private void handleClearCanvas() {
-        saveCanvasState(); // Save state before clearing
+        saveState(); // Save state before clearing
         clearCanvas();
-        redoStack.clear(); // Clear redo stack after action
+        textBoxes.clear();
+        activeTextBox = null;
+        selectedTextBox = null;
         updateUndoRedoButtons();
     }
     
@@ -213,30 +510,91 @@ public class Controller {
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
     
-    // New methods for undo/redo functionality
-    private void saveCanvasState() {
+    // New methods for undo/redo functionality that include text boxes
+    private void saveState() {
+        // Save canvas state
         WritableImage snapshot = new WritableImage((int)canvas.getWidth(), (int)canvas.getHeight());
         canvas.snapshot(null, snapshot);
         undoStack.push(snapshot);
+        
+        // Save text boxes state by creating a deep copy
+        List<TextBox> textBoxesCopy = new ArrayList<>();
+        for (TextBox box : textBoxes) {
+            textBoxesCopy.add(new TextBox(box.getText(), box.getX(), box.getY(), 
+                                         box.getColor(), box.getFontFamily(), 
+                                         box.getFontSize(), box.isBold(), 
+                                         box.isItalic()));
+        }
+        textBoxUndoStack.push(textBoxesCopy);
+        
+        // Clear redo stacks
+        redoStack.clear();
+        textBoxRedoStack.clear();
+        
         updateUndoRedoButtons();
     }
     
     @FXML
     private void handleUndo() {
-        if (undoStack.size() > 1) { // Keep at least the initial state
+        if (undoStack.size() > 1 && !textBoxUndoStack.isEmpty()) { // Keep at least the initial state
+            // Push current states to redo stacks
             redoStack.push(undoStack.pop());
-            Image lastState = undoStack.peek();
-            gc.drawImage(lastState, 0, 0);
+            textBoxRedoStack.push(textBoxUndoStack.pop());
+            
+            // Restore previous states
+            Image lastCanvasState = undoStack.peek();
+            List<TextBox> lastTextBoxState = textBoxUndoStack.peek();
+            
+            // Restore canvas
+            gc.drawImage(lastCanvasState, 0, 0);
+            
+            // Restore text boxes
+            textBoxes.clear();
+            if (lastTextBoxState != null) {
+                for (TextBox box : lastTextBoxState) {
+                    textBoxes.add(new TextBox(box.getText(), box.getX(), box.getY(),
+                                             box.getColor(), box.getFontFamily(),
+                                             box.getFontSize(), box.isBold(),
+                                             box.isItalic()));
+                }
+            }
+            
+            // Deselect any text box
+            activeTextBox = null;
+            selectedTextBox = null;
+            
+            redrawCanvas();
             updateUndoRedoButtons();
         }
     }
     
     @FXML
     private void handleRedo() {
-        if (!redoStack.isEmpty()) {
-            Image redoState = redoStack.pop();
-            undoStack.push(redoState);
-            gc.drawImage(redoState, 0, 0);
+        if (!redoStack.isEmpty() && !textBoxRedoStack.isEmpty()) {
+            // Move the redone state to the undo stack
+            undoStack.push(redoStack.pop());
+            textBoxUndoStack.push(textBoxRedoStack.pop());
+            
+            // Restore canvas
+            gc.drawImage(undoStack.peek(), 0, 0);
+            
+            // Restore text boxes
+            textBoxes.clear();
+            List<TextBox> textBoxState = textBoxUndoStack.peek();
+            if (textBoxState != null) {
+                for (TextBox box : textBoxState) {
+                    textBoxes.add(new TextBox(box.getText(), box.getX(), box.getY(),
+                                             box.getColor(), box.getFontFamily(), 
+                                             box.getFontSize(), box.isBold(),
+                                             box.isItalic()));
+                }
+            }
+            
+            // Deselect any text box
+            activeTextBox = null;
+            selectedTextBox = null;
+            
+            redrawCanvas();
             updateUndoRedoButtons();
         }
     }
