@@ -74,6 +74,7 @@ public class Controller {
             updateBrush();
             toggleTextControls();
             if (!textMode && activeTextBox != null) finalizeActiveTextBox();
+            saveBrushState();
             updateUndoRedoButtons();  // <-- ensure buttons reflect the active stack
         });
         canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, this::handleMousePressed);
@@ -229,6 +230,7 @@ public class Controller {
             isDrawing = false;
             if (currentBrush instanceof Brush.PencilBrush)
                 ((Brush.PencilBrush) currentBrush).resetLastPosition();
+                saveBrushState();
         }
     }
 
