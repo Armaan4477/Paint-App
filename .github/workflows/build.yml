@@ -1,0 +1,185 @@
+name: Build Packages
+
+on:
+  push:
+    branches: [ script ]
+  pull_request:
+    branches: [ script ]
+  workflow_dispatch:
+
+jobs:
+  build-linux-x86:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Java
+      run: |
+        sudo apt-get update
+        sudo apt install default-jdk -y
+        # Set Java 21 as the active version
+        sudo update-alternatives --set java /usr/lib/jvm/java-21-openjdk-amd64/bin/java
+        sudo update-alternatives --set javac /usr/lib/jvm/java-21-openjdk-amd64/bin/javac
+        export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+        echo "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64" >> $GITHUB_ENV
+      
+    - name: Install Maven 3.9.9
+      run: |
+        wget -q https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
+        tar -xzf apache-maven-3.9.9-bin.tar.gz
+        sudo mv apache-maven-3.9.9 /opt/
+        echo "M2_HOME=/opt/apache-maven-3.9.9" >> $GITHUB_ENV
+        echo "MAVEN_HOME=/opt/apache-maven-3.9.9" >> $GITHUB_ENV
+        echo "/opt/apache-maven-3.9.9/bin" >> $GITHUB_PATH
+        
+    - name: Verify Java and Maven Installations
+      run: |
+        java -version
+        mvn -version
+      
+    - name: Build with Maven
+      run: $M2_HOME/bin/mvn clean package
+      
+    - name: Run Linux build script
+      run: |
+        chmod +x build-linux-single.sh
+        ./build-linux-single.sh
+        
+    - name: Upload Linux executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: votingsystem-linux
+        path: VotingSystem
+        retention-days: 7
+
+  build-linux-arm:
+    runs-on: ubuntu-22.04-arm
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Java 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: maven
+
+    - name: Install Maven 3.9.9
+      run: |
+        wget -q https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
+        tar -xzf apache-maven-3.9.9-bin.tar.gz
+        sudo mv apache-maven-3.9.9 /opt/
+        echo "M2_HOME=/opt/apache-maven-3.9.9" >> $GITHUB_ENV
+        echo "MAVEN_HOME=/opt/apache-maven-3.9.9" >> $GITHUB_ENV
+        echo "/opt/apache-maven-3.9.9/bin" >> $GITHUB_PATH
+        
+    - name: Verify Java and Maven Installations
+      run: |
+        java -version
+        mvn -version
+      
+    - name: Build with Maven
+      run: $M2_HOME/bin/mvn clean package
+      
+    - name: Run Linux build script
+      run: |
+        chmod +x build-linux-single.sh
+        ./build-linux-single.sh
+        # Rename the output to indicate ARM build
+        mv VotingSystem VotingSystem-arm64
+        
+    - name: Upload Linux ARM executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: votingsystem-linux-arm64
+        path: VotingSystem-arm64
+        retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          
+      - name: Build with Maven
+        run: mvn clean package --batch-mode
+
+      - name: Verify build artifacts
+        run: |
+          ls -l target
+          test -f target/hellofx-0.0.1-SNAPSHOT.jar
+
+      - name: Make shell script executable
+        run: chmod +x create-macos-app.sh
+
+      - name: Create macOS app using custom script
+        run: ./create-macos-app.sh
+
+      - name: Create DMG archive
+        run: |
+          mkdir -p dist
+          hdiutil create -volname "Voting System" -srcfolder "Voting System.app" -ov -format UDZO dist/VotingSystem.dmg
+
+      - name: Verify app package
+        run: |
+          ls -la "Voting System.app"
+          ls -la dist/
+          
+      - name: Upload macOS application artifact (DMG)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VotingSystem-macOS-DMG
+          path: dist/VotingSystem.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Java 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+        cache: maven
+      
+    - name: Build with Maven
+      run: mvn clean package --batch-mode
+      
+    - name: Download Launch4j
+      run: |
+        curl -L -o launch4j.zip https://sourceforge.net/projects/launch4j/files/launch4j-3/3.50/launch4j-3.50-win32.zip/download
+        7z x launch4j.zip -oC:\Tools\
+      shell: cmd
+      
+    - name: Make Launch4j executable available
+      run: |
+        echo "C:\Tools\launch4j" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+        echo "Launch4j path:"
+        dir "C:\Tools\launch4j"
+      shell: powershell
+      
+    - name: Run Windows build script
+      run: .\build-windows.bat
+      shell: cmd
+      
+    - name: Upload Windows executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: votingsystem-windows
+        path: dist/VotingSystem.exe
+        retention-days: 7
