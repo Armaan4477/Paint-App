@@ -50,8 +50,8 @@ jobs:
     - name: Upload Linux executable
       uses: actions/upload-artifact@v4
       with:
-        name: votingsystem-linux
-        path: VotingSystem
+        name: paintapp-linux
+        path: PaintApp
         retention-days: 7
 
   build-linux-arm:
@@ -90,13 +90,13 @@ jobs:
         chmod +x build-linux-single.sh
         ./build-linux-single.sh
         # Rename the output to indicate ARM build
-        mv VotingSystem VotingSystem-arm64
+        mv PaintApp PaintApp-arm64
         
     - name: Upload Linux ARM executable
       uses: actions/upload-artifact@v4
       with:
-        name: votingsystem-linux-arm64
-        path: VotingSystem-arm64
+        name: paintapp-linux-arm64
+        path: PaintApp-arm64
         retention-days: 7
 
   build-macos:
@@ -130,18 +130,18 @@ jobs:
       - name: Create DMG archive
         run: |
           mkdir -p dist
-          hdiutil create -volname "Voting System" -srcfolder "Voting System.app" -ov -format UDZO dist/VotingSystem.dmg
+          hdiutil create -volname "Paint App" -srcfolder "Paint App.app" -ov -format UDZO dist/PaintApp.dmg
 
       - name: Verify app package
         run: |
-          ls -la "Voting System.app"
+          ls -la "Paint App.app"
           ls -la dist/
           
       - name: Upload macOS application artifact (DMG)
         uses: actions/upload-artifact@v4
         with:
-          name: VotingSystem-macOS-DMG
-          path: dist/VotingSystem.dmg
+          name: PaintApp-macOS-DMG
+          path: dist/PaintApp.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -180,6 +180,6 @@ jobs:
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
-        name: votingsystem-windows
-        path: dist/VotingSystem.exe
+        name: paintapp-windows
+        path: dist/PaintApp.exe
         retention-days: 7
