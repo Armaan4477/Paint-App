@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP_NAME="VotingSystem"
+APP_NAME="PaintApp"
 VERSION="1.0.0"
 JAR_FILE="target/hellofx-0.0.1-SNAPSHOT.jar"
 TMP_DIR="build-tmp"
@@ -92,9 +92,9 @@ tar -czf package.tar.gz -C "$TMP_DIR" .
 echo "Creating $OUTPUT_FILE..."
 cat > "$OUTPUT_FILE" << 'EOF'
 #!/bin/bash
-# Self-extracting executable launcher for VotingSystem
+# Self-extracting executable launcher for PaintApp
 
-APP_NAME="VotingSystem"
+APP_NAME="PaintApp"
 WORKDIR=$(mktemp -d /tmp/$APP_NAME.XXXXXX)
 
 # Cleanup on exit

@@ -3,8 +3,8 @@
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
   <jar>../target/hellofx-0.0.1-SNAPSHOT.jar</jar>
-  <outfile>../VotingSystem.exe</outfile>
-  <errTitle>Voting System</errTitle>
+  <outfile>../PaintApp.exe</outfile>
+  <errTitle>Paint App</errTitle>
   <cmdLine></cmdLine>
   <chdir>.</chdir>
   <priority>normal</priority>

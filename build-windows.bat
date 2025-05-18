@@ -1,10 +1,10 @@
 @echo off
-echo ===== Voting System Builder =====
+echo ===== Paint App Builder =====
 
 set "LAUNCH4J_PATH=C:\Tools\launch4j"
 set "CONFIG_XML=build_windows\launch4j-config.xml"
 set "DIST_DIR=dist"
-set "OUTPUT_EXE=VotingSystem.exe"
+set "OUTPUT_EXE=PaintApp.exe"
 
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 

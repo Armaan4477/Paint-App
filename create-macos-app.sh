@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Set variables
-APP_NAME="Voting System"
+APP_NAME="Paint App"
 JAR_FILE="target/hellofx-0.0.1-SNAPSHOT.jar"
 VERSION="1.0.0"
-BUNDLE_ID="org.main.voting"
-COPYRIGHT="© $(date +%Y) Voting System"
+BUNDLE_ID="org.main.paint"
+COPYRIGHT="© $(date +%Y) Paint App"
 
 # Check if JAR exists
 if [ ! -f "$JAR_FILE" ]; then
@@ -108,7 +108,7 @@ if [ -n "$JAVAFX_SDK" ] && [ -d "$JAVAFX_SDK" ]; then
     fi
     
     # Create launcher script that uses bundled JavaFX
-    cat > "$MACOS_DIR/VotingSystem" << 'EOF'
+    cat > "$MACOS_DIR/PaintApp" << 'EOF'
 #!/bin/bash
 
 # Get the directory where the script is located
@@ -123,8 +123,8 @@ if ! command -v java &> /dev/null; then
 fi
 
 # Set debug output
-exec > "$HOME/Library/Logs/VotingSystem.log" 2>&1
-echo "Starting Voting System Application at $(date)"
+exec > "$HOME/Library/Logs/PaintApp.log" 2>&1
+echo "Starting Paint App Application at $(date)"
 echo "Java location: $(which java)"
 echo "Path: $PATH"
 echo "Java version: $(java -version 2>&1)"
@@ -149,7 +149,7 @@ EOF
 else
     echo "No JavaFX SDK specified. Creating a simpler launcher..."
     # Create a simple launcher that assumes JavaFX is embedded or available
-    cat > "$MACOS_DIR/VotingSystem" << 'EOF'
+    cat > "$MACOS_DIR/PaintApp" << 'EOF'
 #!/bin/bash
 
 # Get the directory where the script is located
@@ -164,8 +164,8 @@ if ! command -v java &> /dev/null; then
 fi
 
 # Set debug output
-exec > "$HOME/Library/Logs/VotingSystem.log" 2>&1
-echo "Starting Voting System Application at $(date)"
+exec > "$HOME/Library/Logs/PaintApp.log" 2>&1
+echo "Starting Paint App Application at $(date)"
 echo "Java location: $(which java)"
 echo "Path: $PATH"
 echo "Java version: $(java -version 2>&1)"
@@ -210,13 +210,13 @@ for path in "${JAVAFX_PATHS[@]}"; do
 done
 
 echo "All launch methods failed. Please make sure JavaFX is installed properly."
-osascript -e 'tell app "System Events" to display dialog "Failed to launch Voting System. Check the log at ~/Library/Logs/VotingSystem.log for details." buttons {"OK"} default button 1 with title "Launch Failed" with icon stop'
+osascript -e 'tell app "System Events" to display dialog "Failed to launch Paint App. Check the log at ~/Library/Logs/PaintApp.log for details." buttons {"OK"} default button 1 with title "Launch Failed" with icon stop'
 exit 1
 EOF
 fi
 
 # Make the launcher script executable
-chmod +x "$MACOS_DIR/VotingSystem"
+chmod +x "$MACOS_DIR/PaintApp"
 
 # Create Info.plist
 echo "Creating Info.plist..."
@@ -228,7 +228,7 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
     <key>CFBundleExecutable</key>
-    <string>VotingSystem</string>
+    <string>PaintApp</string>
     <key>CFBundleIdentifier</key>
     <string>$BUNDLE_ID</string>
     <key>CFBundleDisplayName</key>
@@ -263,7 +263,7 @@ echo "To run the application:"
 echo "  1. Double-click the app bundle in Finder"
 echo "  2. Or run: open \"$APP_DIR\""
 echo ""
-echo "Debug logs will be written to: ~/Library/Logs/VotingSystem.log"
+echo "Debug logs will be written to: ~/Library/Logs/PaintApp.log"
 echo "Check this file if the application doesn't start properly."
 echo ""
 echo "Note: You may need to right-click and select 'Open' the first time to bypass Gatekeeper."
