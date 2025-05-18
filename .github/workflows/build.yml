@@ -2,9 +2,9 @@ name: Build Packages
 
 on:
   push:
-    branches: [ script ]
+    branches: [ main ]
   pull_request:
-    branches: [ script ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
